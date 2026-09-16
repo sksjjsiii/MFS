@@ -1,0 +1,319 @@
+name: 🚀 MCP Server (All-in-One)
+
+on:
+  workflow_dispatch:
+    inputs:
+      session_minutes:
+        description: 'مدت فعال بودن سرور (دقیقه)'
+        required: true
+        default: '30'
+        type: string
+
+env:
+  MCP_PORT: 5000
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 📦 Install deps
+        run: |
+          pip install --upgrade pip
+          pip install fastmcp
+
+      - name: 📝 Create MCP server
+        run: |
+          mkdir -p mcp_server
+          cat > mcp_server/server.py <<'PYEOF'
+          import os, subprocess, shutil, json, sys
+          from pathlib import Path
+          from fastmcp import FastMCP
+
+          BASE = os.environ.get("MCP_ALLOWED_DIR", os.getcwd())
+          TIMEOUT = int(os.environ.get("MCP_COMMAND_TIMEOUT", "120"))
+
+          mcp = FastMCP("System Control MCP")
+
+          def _p(path):
+              p = Path(path).expanduser().resolve()
+              return p
+
+          @mcp.tool()
+          def read_file(path: str, start_line: int = 0, end_line: int = 0) -> str:
+              """خواندن محتوای فایل."""
+              p = _p(path)
+              text = p.read_text(encoding="utf-8", errors="replace")
+              if start_line or end_line:
+                  lines = text.splitlines()
+                  end = end_line if end_line else len(lines)
+                  return "\n".join(lines[start_line:end])
+              return text
+
+          @mcp.tool()
+          def write_file(path: str, content: str) -> str:
+              """نوشتن یا بازنویسی فایل."""
+              p = _p(path)
+              p.parent.mkdir(parents=True, exist_ok=True)
+              p.write_text(content, encoding="utf-8")
+              return f"OK: {p} ({len(content)} chars)"
+
+          @mcp.tool()
+          def append_file(path: str, content: str) -> str:
+              """افزودن به انتهای فایل."""
+              p = _p(path)
+              p.parent.mkdir(parents=True, exist_ok=True)
+              with p.open("a", encoding="utf-8") as f:
+                  f.write(content)
+              return f"OK: appended to {p}"
+
+          @mcp.tool()
+          def edit_file(path: str, old_text: str, new_text: str) -> str:
+              """جایگزینی متن در فایل."""
+              p = _p(path)
+              text = p.read_text(encoding="utf-8")
+              if old_text not in text:
+                  return "ERROR: text not found"
+              p.write_text(text.replace(old_text, new_text, 1), encoding="utf-8")
+              return f"OK: edited {p}"
+
+          @mcp.tool()
+          def delete_file(path: str) -> str:
+              """حذف فایل."""
+              p = _p(path)
+              p.unlink()
+              return f"OK: deleted {p}"
+
+          @mcp.tool()
+          def list_directory(path: str = ".") -> str:
+              """لیست محتویات دایرکتوری."""
+              p = _p(path)
+              out = []
+              for item in sorted(p.iterdir()):
+                  tag = "DIR " if item.is_dir() else "FILE"
+                  size = item.stat().st_size if item.is_file() else 0
+                  out.append(f"{tag} {item.name} ({size})")
+              return "\n".join(out) if out else "(empty)"
+
+          @mcp.tool()
+          def create_directory(path: str) -> str:
+              """ایجاد دایرکتوری."""
+              _p(path).mkdir(parents=True, exist_ok=True)
+              return f"OK: created {path}"
+
+          @mcp.tool()
+          def search_files(pattern: str, path: str = ".") -> str:
+              """جستجوی فایل بر اساس الگو."""
+              p = _p(path)
+              m = [str(x) for x in p.rglob(pattern)]
+              return "\n".join(m[:200]) if m else "no match"
+
+          @mcp.tool()
+          def run_command(command: str, workdir: str = "") -> str:
+              """اجرای دستور shell."""
+              cwd = workdir if workdir else BASE
+              r = subprocess.run(command, shell=True, cwd=cwd,
+                                 capture_output=True, text=True, timeout=TIMEOUT)
+              out = r.stdout or ""
+              if r.stderr:
+                  out += f"\n--- stderr ---\n{r.stderr}"
+              out += f"\n(exit={r.returncode})"
+              return out
+
+          @mcp.tool()
+          def run_python(code: str) -> str:
+              """اجرای کد پایتون."""
+              r = subprocess.run([sys.executable, "-c", code],
+                                 capture_output=True, text=True, timeout=TIMEOUT, cwd=BASE)
+              out = r.stdout or ""
+              if r.stderr:
+                  out += f"\n--- stderr ---\n{r.stderr}"
+              return out
+
+          @mcp.tool()
+          def system_info() -> str:
+              """اطلاعات سیستم."""
+              return json.dumps({
+                  "cwd": os.getcwd(),
+                  "disk": shutil.disk_usage("/")._asdict(),
+                  "env": dict(list(os.environ.items())[:30]),
+              }, indent=2, ensure_ascii=False)
+
+          @mcp.tool()
+          def get_env(key: str) -> str:
+              """خواندن متغیر محیطی."""
+              return f"{key}={os.environ.get(key, '<unset>')}"
+
+          @mcp.tool()
+          def git_status() -> str:
+              """وضعیت Git."""
+              return run_command("git status --short --branch")
+
+          @mcp.tool()
+          def git_diff() -> str:
+              """دیف Git."""
+              return run_command("git diff HEAD")
+
+          @mcp.tool()
+          def git_add_commit(message: str, files: str = ".") -> str:
+              """Git add + commit."""
+              a = run_command(f"git add {files}")
+              c = run_command(f'git commit -m "{message}"')
+              return a + "\n" + c
+
+          @mcp.tool()
+          def http_request(url: str, method: str = "GET", data: str = "", headers: str = "") -> str:
+              """درخواست HTTP با curl."""
+              cmd = f"curl -s -X {method} "
+              if data:
+                  cmd += f"-d '{data}' "
+              if headers:
+                  cmd += f"-H '{headers}' "
+              cmd += f"'{url}'"
+              return run_command(cmd)
+
+          if __name__ == "__main__":
+              mcp.run(transport="streamable-http", host="0.0.0.0", port=5000)
+          PYEOF
+
+      - name: 🚀 Start MCP server
+        run: |
+          nohup python mcp_server/server.py > mcp.log 2>&1 &
+          echo "MCP_PID=$!" >> $GITHUB_ENV
+          sleep 6
+          if ! kill -0 $! 2>/dev/null; then
+            echo "MCP failed to start"; cat mcp.log; exit 1
+          fi
+          echo "MCP started on port 5000"
+
+      - name: 🌐 Cloudflare tunnel
+        run: |
+          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+          chmod +x cloudflared
+          sudo mv cloudflared /usr/local/bin/cloudflared
+
+          cloudflared tunnel --url http://localhost:5000 --no-autoupdate > cf.log 2>&1 &
+          sleep 8
+
+          TUNNEL_URL=""
+          for i in $(seq 1 30); do
+            if grep -q 'trycloudflare\.com' cf.log; then
+              TUNNEL_URL=$(grep -oP 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' cf.log | head -n1)
+              [ -n "$TUNNEL_URL" ] && break
+            fi
+            sleep 2
+          done
+
+          if [ -z "$TUNNEL_URL" ]; then
+            echo "Tunnel failed"; cat cf.log; exit 1
+          fi
+
+          echo "TUNNEL_URL=$TUNNEL_URL" >> $GITHUB_ENV
+          echo "=================================="
+          echo "✅ MCP URL: $TUNNEL_URL/mcp"
+          echo "=================================="
+
+      - name: 📝 Update README
+        if: always()
+        run: |
+          cat > README.md <<EOF
+          # MCP Server
+
+          **URL:** ${{ env.TUNNEL_URL }}/mcp
+
+          **Started:** $(date)
+
+          Ready to connect from any MCP client.
+          EOF
+          git config user.name "bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add README.md
+          git commit -m "update url [skip ci]" || true
+          git push || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔄 Keep alive
+        run: |
+          set +e
+          DURATION=${{ github.event.inputs.session_minutes }}
+          END=$(date -d "$DURATION minutes" +%s)
+          URL="${{ env.TUNNEL_URL }}"
+          LAST=0
+
+          echo "Server alive for $DURATION minutes"
+          echo "URL: $URL/mcp"
+
+          while [ $(date +%s) -lt $END ]; do
+            NOW=$(date +%s)
+            REM=$((END - NOW))
+            echo "[$(date +%H:%M:%S)] remaining $((REM/60))m"
+
+            # health check server
+            if ! pgrep -f "mcp_server/server.py" >/dev/null; then
+              echo "MCP crashed - restarting..."
+              nohup python mcp_server/server.py > mcp.log 2>&1 &
+              sleep 5
+            fi
+
+            # health check tunnel
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$URL/mcp" 2>/dev/null || echo "000")
+            echo "  health: $CODE"
+
+            if [ "$CODE" = "000" ]; then
+              echo "  tunnel down - restarting cloudflared..."
+              pkill cloudflared || true
+              sleep 2
+              cloudflared tunnel --url http://localhost:5000 --no-autoupdate > cf.log 2>&1 &
+              sleep 10
+              NEW=$(grep -oP 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' cf.log | head -n1)
+              if [ -n "$NEW" ]; then
+                URL=$NEW
+                echo "  new URL: $URL"
+                echo "$URL" > README.md
+                git add README.md
+                git commit -m "new url [skip ci]" || true
+                git push || true
+              fi
+            fi
+
+            # log upload every 5 min
+            if [ $((NOW - LAST)) -ge 300 ]; then
+              {
+                echo "=== $(date) ==="
+                echo "URL: $URL"
+                echo "--- mcp.log ---"
+                tail -100 mcp.log 2>/dev/null
+                echo ""
+                echo "--- cf.log ---"
+                tail -50 cf.log 2>/dev/null
+                echo ""
+                echo "--- ps ---"
+                ps aux | grep -E "python|cloudflared" | grep -v grep
+              } > log.txt 2>&1
+
+              git add log.txt
+              git commit -m "log [skip ci]" || true
+              git push || true
+              LAST=$NOW
+            fi
+
+            sleep 30
+          done
+
+          echo "done"
+          pkill -f "mcp_server/server.py" || true
+          pkill cloudflared || true

@@ -1,0 +1,7 @@
+config {
+    port: 8000
+}
+
+route GET "/" {
+    return json { message: "Hello from WebFast!" }
+}

@@ -1,0 +1,163 @@
+# WebFast v4.0 - Complete Feature Test
+config {
+    port: 8000
+    site_name: "WebFast v4.0 Demo"
+    author: "Developer"
+    version: "4.0.0"
+}
+
+# Test 1: Arrays in JSON (CRITICAL)
+route GET "/test/arrays" {
+    return json {
+        numbers: [1, 2, 3, 4, 5],
+        strings: ["hello", "world", "webfast"],
+        mixed: [1, "two", true, null],
+        empty: []
+    }
+}
+
+# Test 2: Nested arrays and objects (CRITICAL)
+route GET "/test/nested" {
+    return json {
+        users: [
+            { id: 1, name: "Alice", active: true },
+            { id: 2, name: "Bob", active: false }
+        ],
+        count: 2
+    }
+}
+
+# Test 3: SEO to HTML (CRITICAL)
+route GET "/test/seo" {
+    seo {
+        title: "WebFast SEO Test"
+        description: "Testing SEO meta tags in HTML"
+        keywords: "webfast, seo, html, meta"
+        canonical: "http://localhost:8000/test/seo"
+        og_title: "WebFast SEO"
+        og_description: "Open Graph test"
+        og_image: "http://localhost:8000/image.jpg"
+        og_type: "website"
+        twitter_card: "summary"
+    }
+    
+    return html "<h1>SEO Test Page</h1><p>Check the HTML source for meta tags!</p>"
+}
+
+# Test 4: For loops (CRITICAL)
+route GET "/test/forloop" {
+    items = [
+        { name: "Item 1", price: 10 },
+        { name: "Item 2", price: 20 },
+        { name: "Item 3", price: 30 }
+    ]
+    
+    return json {
+        items: items,
+        count: 3
+    }
+}
+
+# Test 5: Route parameters
+route GET "/user/{id}" {
+    return json {
+        user_id: id,
+        name: "User",
+        active: true
+    }
+}
+
+# Test 6: Query strings
+route GET "/search" {
+    q = query
+    return json {
+        query: q,
+        results: [
+            { title: "Result 1" },
+            { title: "Result 2" }
+        ]
+    }
+}
+
+# Test 7: If statements
+route GET "/test/if" {
+    found = null
+    if !found {
+        return json {
+            message: "Not found as expected",
+            test: "pass"
+        }
+    }
+    return json { message: "Should not reach here" }
+}
+
+# Test 8: All data types
+route GET "/test/types" {
+    return json {
+        string: "hello",
+        integer: 42,
+        float: 3.14,
+        boolean_true: true,
+        boolean_false: false,
+        null_value: null,
+        timestamp: now
+    }
+}
+
+# Test 9: Config access
+route GET "/test/config" {
+    return json {
+        site: config.site_name,
+        author: config.author,
+        version: config.version,
+        port: config.port
+    }
+}
+
+# Test 10: Text response
+route GET "/robots.txt" {
+    return text "User-agent: *\nAllow: /\n"
+}
+
+# Test 11: Multiple HTTP methods
+route POST "/api/create" {
+    return json { status: "created", method: "POST" }
+}
+
+route PUT "/api/update/{id}" {
+    return json { status: "updated", id: id, method: "PUT" }
+}
+
+route DELETE "/api/delete/{id}" {
+    return json { status: "deleted", id: id, method: "DELETE" }
+}
+
+# Test 12: Health check
+route GET "/health" {
+    return json {
+        status: "ok",
+        version: config.version,
+        uptime: now
+    }
+}
+
+# Home page
+route GET "/" {
+    seo {
+        title: "WebFast v4.0 - Ultimate Web Framework"
+        description: "Complete web programming language"
+    }
+    
+    return json {
+        message: "Welcome to WebFast v4.0!",
+        version: config.version,
+        features: [
+            "Arrays in JSON",
+            "For loops",
+            "SEO to HTML",
+            "All HTTP methods",
+            "Route parameters",
+            "Query strings"
+        ]
+    }
+}

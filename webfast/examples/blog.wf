@@ -1,0 +1,108 @@
+# ═══════════════════════════════════════════════════════
+#  My Blog — A complete WebFast application
+#  Run: wf blog.wf -o blog.c
+#  Then: gcc blog.c runtime/webfast_runtime.c -o blog
+# ═══════════════════════════════════════════════════════
+
+config {
+    port: 8000
+    site_name: "My Blog"
+    site_url: "http://localhost:8000"
+    author: "Ali"
+    version: "1.0.0"
+}
+
+# ─────────────────────────────────────
+#  Home page
+# ─────────────────────────────────────
+
+route GET "/" {
+    seo {
+        title: "My Blog — Thoughts on code and life"
+        description: "A personal blog about software, design, and everything in between."
+        canonical: "http://localhost:8000"
+        type: website
+    }
+    
+    posts = [
+        {
+            slug: "hello-world",
+            title: "Hello, World",
+            excerpt: "The first post on my new blog.",
+            author: "Ali",
+            date: "2025-01-15"
+        },
+        {
+            slug: "why-c",
+            title: "Why I Love C",
+            excerpt: "After 35 years, C is still my favorite language.",
+            author: "Ali",
+            date: "2025-01-20"
+        },
+        {
+            slug: "build-systems",
+            title: "Build Systems Are Hard",
+            excerpt: "Reflections on build tools, monorepos, and complexity.",
+            author: "Ali",
+            date: "2025-01-25"
+        }
+    ]
+    
+    return json {
+        site: config.site_name,
+        author: config.author,
+        posts: posts,
+        count: 3
+    }
+}
+
+# ─────────────────────────────────────
+#  Health check
+# ─────────────────────────────────────
+
+route GET "/health" {
+    return json {
+        status: "ok",
+        service: "blog",
+        version: config.version,
+        time: now
+    }
+}
+
+# ─────────────────────────────────────
+#  About
+# ─────────────────────────────────────
+
+route GET "/about" {
+    seo {
+        title: "About — My Blog"
+        description: "About the author and this blog."
+        canonical: "http://localhost:8000/about"
+    }
+    
+    return json {
+        name: config.author,
+        bio: "Software engineer with 35 years of C experience.",
+        site: config.site_name
+    }
+}
+
+# ─────────────────────────────────────
+#  API endpoints
+# ─────────────────────────────────────
+
+route GET "/api/version" {
+    return json {
+        name: config.site_name,
+        version: config.version,
+        author: config.author
+    }
+}
+
+route GET "/api/stats" {
+    return json {
+        posts: 3,
+        visits: 1234,
+        uptime: now
+    }
+}

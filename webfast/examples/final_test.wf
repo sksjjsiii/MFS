@@ -1,0 +1,136 @@
+# WebFast Final Test - All Features Working
+config {
+    port: 9090
+    site_name: "WebFast Demo"
+    author: "Developer"
+    version: "1.0.0"
+}
+
+# Home page with config access
+route GET "/" {
+    return json {
+        message: "Welcome to WebFast!",
+        site: config.site_name,
+        version: config.version,
+        author: config.author,
+        time: now
+    }
+}
+
+# Health check
+route GET "/health" {
+    return json {
+        status: "ok",
+        service: config.site_name,
+        version: config.version
+    }
+}
+
+# Route parameters
+route GET "/user/{id}" {
+    return json {
+        user_id: id,
+        name: "User " + id,
+        active: true
+    }
+}
+
+# Nested parameters
+route GET "/post/{postId}/comment/{commentId}" {
+    return json {
+        post: postId,
+        comment: commentId,
+        text: "Comment text"
+    }
+}
+
+# Query string
+route GET "/search" {
+    q = query
+    return json {
+        query: q,
+        results: [
+            { title: "Result 1" },
+            { title: "Result 2" }
+        ]
+    }
+}
+
+# If statement
+route GET "/check" {
+    found = null
+    if !found {
+        return json {
+            message: "Not found",
+            status: "checked"
+        }
+    }
+    return json { message: "Found" }
+}
+
+# Data types
+route GET "/types" {
+    return json {
+        string: "hello",
+        integer: 42,
+        float: 3.14,
+        boolean_true: true,
+        boolean_false: false,
+        null_value: null,
+        timestamp: now
+    }
+}
+
+# Text response
+route GET "/robots.txt" {
+    return text "User-agent: *\nAllow: /\n"
+}
+
+# HTML response
+route GET "/page" {
+    return html "<html><body><h1>WebFast</h1><p>HTML response works!</p></body></html>"
+}
+
+# POST endpoint
+route POST "/api/submit" {
+    return json {
+        status: "received",
+        method: "POST",
+        time: now
+    }
+}
+
+# Nested objects
+route GET "/api/nested" {
+    return json {
+        server: {
+            name: config.site_name,
+            version: config.version
+        },
+        meta: {
+            generated: "WebFast",
+            compiled: true
+        }
+    }
+}
+
+# About page
+route GET "/about" {
+    seo {
+        title: "About WebFast"
+        description: "WebFast compiler demo"
+    }
+    
+    return json {
+        name: config.site_name,
+        author: config.author,
+        version: config.version,
+        language: "C",
+        features: [
+            "routes",
+            "json",
+            "params",
+            "seo"
+        ]
+    }
+}

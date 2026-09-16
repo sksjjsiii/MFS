@@ -1,0 +1,331 @@
+# WebFast v4.0 - Comprehensive Feature Test
+# This application tests all major features of WebFast
+
+config {
+    port: 8000
+    site_name: "WebFast v4.0 Demo"
+    site_url: "http://localhost:8000"
+    author: "WebFast Developer"
+    version: "4.0.0"
+    environment: "development"
+}
+
+# ============================================================================
+# Home Page - Welcome with SEO
+# ============================================================================
+
+route GET "/" {
+    seo {
+        title: "WebFast v4.0 - Ultimate Web Framework"
+        description: "A complete, production-ready web programming language with arrays, loops, and SEO"
+        keywords: "webfast, web framework, programming language, arrays, seo"
+        canonical: "http://localhost:8000"
+        og_title: "WebFast v4.0"
+        og_description: "Complete web framework"
+        og_type: "website"
+    }
+    
+    return json {
+        message: "Welcome to WebFast v4.0!",
+        version: config.version,
+        site: config.site_name,
+        author: config.author,
+        environment: config.environment,
+        timestamp: now,
+        features: [
+            "Arrays in JSON",
+            "For Loops",
+            "SEO to HTML",
+            "Route Parameters",
+            "Query Strings",
+            "All HTTP Methods",
+            "Multiple Response Types",
+            "Config Access"
+        ],
+        stats: {
+            routes: 12,
+            methods: ["GET", "POST", "PUT", "DELETE"],
+            response_types: ["JSON", "HTML", "Text"]
+        }
+    }
+}
+
+# ============================================================================
+# Test 1: Arrays in JSON (Critical Feature)
+# ============================================================================
+
+route GET "/test/arrays" {
+    return json {
+        simple_array: [1, 2, 3, 4, 5],
+        string_array: ["hello", "world", "webfast"],
+        mixed_array: [1, "two", true, null, 3.14],
+        empty_array: [],
+        nested_objects: [
+            { id: 1, name: "Alice", active: true },
+            { id: 2, name: "Bob", active: false },
+            { id: 3, name: "Charlie", active: true }
+        ]
+    }
+}
+
+# ============================================================================
+# Test 2: Nested Arrays and Objects (Critical Feature)
+# ============================================================================
+
+route GET "/test/nested" {
+    return json {
+        users: [
+            { 
+                id: 1, 
+                name: "Alice", 
+                email: "alice@example.com",
+                roles: ["admin", "user"]
+            },
+            { 
+                id: 2, 
+                name: "Bob", 
+                email: "bob@example.com",
+                roles: ["user"]
+            }
+        ],
+        metadata: {
+            total: 2,
+            page: 1,
+            per_page: 10
+        },
+        tags: ["web", "fast", "framework"]
+    }
+}
+
+# ============================================================================
+# Test 3: SEO to HTML (Critical Feature)
+# ============================================================================
+
+route GET "/test/seo" {
+    seo {
+        title: "WebFast SEO Test Page"
+        description: "Testing SEO meta tags generation in HTML output"
+        keywords: "webfast, seo, html, meta tags, testing"
+        canonical: "http://localhost:8000/test/seo"
+        og_title: "WebFast SEO Demo"
+        og_description: "Open Graph tags test"
+        og_image: "http://localhost:8000/images/og-image.jpg"
+        og_type: "article"
+        twitter_card: "summary_large_image"
+    }
+    
+    return html "<h1>SEO Test Page</h1>
+<p>This page demonstrates SEO meta tags in HTML output.</p>
+<h2>Check the HTML source!</h2>
+<ul>
+    <li>Title tag: WebFast SEO Test Page</li>
+    <li>Meta description: Testing SEO meta tags...</li>
+    <li>Meta keywords: webfast, seo, html...</li>
+    <li>Canonical URL: http://localhost:8000/test/seo</li>
+    <li>Open Graph tags: og:title, og:description, og:image</li>
+    <li>Twitter Card: summary_large_image</li>
+</ul>
+<p>View the page source to see all meta tags!</p>"
+}
+
+# ============================================================================
+# Test 4: Route Parameters
+# ============================================================================
+
+route GET "/user/{id}" {
+    return json {
+        user_id: id,
+        name: "User",
+        email: "user@example.com",
+        active: true,
+        created_at: now
+    }
+}
+
+route GET "/post/{postId}/comment/{commentId}" {
+    return json {
+        post_id: postId,
+        comment_id: commentId,
+        text: "This is a comment on post",
+        author: "Commenter",
+        timestamp: now
+    }
+}
+
+# ============================================================================
+# Test 5: Query Strings
+# ============================================================================
+
+route GET "/search" {
+    q = query
+    
+    return json {
+        query: q,
+        results: [
+            { id: 1, title: "Result 1", score: 95 },
+            { id: 2, title: "Result 2", score: 87 },
+            { id: 3, title: "Result 3", score: 76 }
+        ],
+        total: 3,
+        page: 1,
+        per_page: 10
+    }
+}
+
+# ============================================================================
+# Test 6: All Data Types
+# ============================================================================
+
+route GET "/test/types" {
+    return json {
+        string: "hello world",
+        integer: 42,
+        float: 3.14159,
+        boolean_true: true,
+        boolean_false: false,
+        null_value: null,
+        timestamp: now,
+        array: [1, 2, 3],
+        object: {
+            nested: {
+                deep: {
+                    value: "nested objects work!"
+                }
+            }
+        }
+    }
+}
+
+# ============================================================================
+# Test 7: Config Access
+# ============================================================================
+
+route GET "/test/config" {
+    return json {
+        site_name: config.site_name,
+        site_url: config.site_url,
+        author: config.author,
+        version: config.version,
+        environment: config.environment,
+        port: config.port
+    }
+}
+
+# ============================================================================
+# Test 8: Text Response
+# ============================================================================
+
+route GET "/robots.txt" {
+    return text "User-agent: *\nAllow: /\nSitemap: http://localhost:8000/sitemap.xml\n"
+}
+
+# ============================================================================
+# Test 9: Multiple HTTP Methods
+# ============================================================================
+
+route POST "/api/create" {
+    return json {
+        status: "created",
+        method: "POST",
+        message: "Resource created successfully",
+        timestamp: now
+    }
+}
+
+route PUT "/api/update/{id}" {
+    return json {
+        status: "updated",
+        method: "PUT",
+        id: id,
+        message: "Resource updated successfully",
+        timestamp: now
+    }
+}
+
+route DELETE "/api/delete/{id}" {
+    return json {
+        status: "deleted",
+        method: "DELETE",
+        id: id,
+        message: "Resource deleted successfully",
+        timestamp: now
+    }
+}
+
+# ============================================================================
+# Test 10: Health Check
+# ============================================================================
+
+route GET "/health" {
+    return json {
+        status: "healthy",
+        version: config.version,
+        uptime: now,
+        checks: {
+            database: "ok",
+            cache: "ok",
+            memory: "ok"
+        }
+    }
+}
+
+# ============================================================================
+# Test 11: Complex Nested Structure
+# ============================================================================
+
+route GET "/api/dashboard" {
+    return json {
+        overview: {
+            total_users: 1234,
+            active_sessions: 567,
+            revenue: 9876.54
+        },
+        recent_activity: [
+            { user: "Alice", action: "login", time: "2026-09-16 10:00:00" },
+            { user: "Bob", action: "purchase", time: "2026-09-16 10:05:00" },
+            { user: "Charlie", action: "logout", time: "2026-09-16 10:10:00" }
+        ],
+        stats: {
+            daily_visits: [100, 150, 200, 180, 220],
+            weekly_average: 170,
+            growth_rate: 12.5
+        }
+    }
+}
+
+# ============================================================================
+# Test 12: About Page with SEO
+# ============================================================================
+
+route GET "/about" {
+    seo {
+        title: "About WebFast v4.0"
+        description: "Learn about the WebFast web programming language and framework"
+        keywords: "about, webfast, framework, documentation"
+        og_title: "About WebFast"
+        og_description: "Complete web framework documentation"
+        og_type: "article"
+    }
+    
+    return json {
+        name: config.site_name,
+        version: config.version,
+        author: config.author,
+        description: "A complete, production-ready web programming language",
+        features: [
+            "High Performance",
+            "Arrays in JSON",
+            "For Loops",
+            "SEO to HTML",
+            "Route Parameters",
+            "Query Strings",
+            "All HTTP Methods",
+            "Multiple Response Types"
+        ],
+        links: {
+            home: "/",
+            docs: "/docs",
+            api: "/api"
+        }
+    }
+}
